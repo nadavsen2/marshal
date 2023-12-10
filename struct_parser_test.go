@@ -9,10 +9,13 @@ import (
 )
 
 type RootStruct struct {
-	Name string `marshal:"name"`
-	Type string `marshal:"type"`
-	Strc DataB  `marshal:"struct"`
-	Ptr  *DataA `marshal:"ptr"`
+	Name           string            `marshal:"name"`
+	Type           string            `marshal:"type"`
+	Strc           DataB             `marshal:"struct"`
+	Ptr            *DataA            `marshal:"ptr"`
+	RegularMap     map[string]int    `marshal:"regular_map"`
+	MapWithStruct  map[string]DataA  `marshal:"map_with_struct"`
+	MapWithPointer map[string]*DataA `marshal:"map_with_pointer"`
 }
 
 type DataA struct {
@@ -25,13 +28,113 @@ type DataB struct {
 	Data       any    `marshal:"data"`
 }
 
-func TestStructWithUnionType(t *testing.T) {
+func TestStructWithString(t *testing.T) {
+	config := &Config{
+		TagName: "marshal",
+	}
+	structParser := NewStructParser(config)
+
+	expected := RootStruct{
+		Name: "test",
+		Type: "A",
+	}
+
+	input := map[string]interface{}{
+		"name": "test",
+		"type": "A",
+	}
+
+	// Act:
+	actual := RootStruct{}
+	err := structParser.Parse(reflect.ValueOf(input), reflect.ValueOf(&actual), EmptyContext)
+
+	// Assert:
+	assert.NoError(t, err)
+	assert.Equal(t, expected, actual)
+
+}
+
+func TestMapWithStructs(t *testing.T) {
+	// Arrange:
+
+	input := map[string]interface{}{
+		"map_with_struct": map[string]interface{}{
+			"test1": map[string]interface{}{
+				"a": 1,
+			},
+			"test2": map[string]interface{}{
+				"a": 2,
+			},
+		},
+	}
+
+	expected := RootStruct{
+		MapWithStruct: map[string]DataA{
+			"test1": {
+				A: 1,
+			},
+			"test2": {
+				A: 2,
+			},
+		},
+	}
+
+	config := &Config{TagName: "marshal"}
+	structParser := NewStructParser(config)
+
+	// Act:
+	actual := RootStruct{}
+	err := structParser.Parse(reflect.ValueOf(input), reflect.ValueOf(&actual), EmptyContext)
+
+	// Assert:
+	assert.NoError(t, err)
+	assert.Equal(t, expected, actual)
+}
+
+func TestMapWithPointers(t *testing.T) {
+	// Arrange:
+
+	input := map[string]interface{}{
+		"map_with_pointer": map[string]interface{}{
+			"test1": map[string]interface{}{
+				"a": 1,
+			},
+			"test2": map[string]interface{}{
+				"a": 2,
+			},
+		},
+	}
+
+	expected := RootStruct{
+		MapWithPointer: map[string]*DataA{
+			"test1": {
+				A: 1,
+			},
+			"test2": {
+				A: 2,
+			},
+		},
+	}
+
+	config := &Config{TagName: "marshal"}
+	structParser := NewStructParser(config)
+
+	// Act:
+	actual := RootStruct{}
+	err := structParser.Parse(reflect.ValueOf(input), reflect.ValueOf(&actual), EmptyContext)
+
+	// Assert:
+	assert.NoError(t, err)
+	assert.Equal(t, expected, actual)
+}
+
+func TestAllTogether(t *testing.T) {
 
 	// Arrange:
-	structParser := StructParser{
-		tagName: "marshal",
-		valueResolver: func(key string, val reflect.Value, fatherStructFrom map[string]interface{}, fatherVal reflect.Value) (reflect.Value, error) {
-			switch fatherVal.Type() {
+	config := &Config{
+		TagName: "marshal",
+		ValueResolver: func(ctx ParsingContext) (reflect.Value, error) {
+			switch ctx.FatherVal.Type() {
 			case reflect.TypeOf(DataB{}):
 				return reflect.ValueOf(&DataA{}), nil
 			default:
@@ -39,6 +142,7 @@ func TestStructWithUnionType(t *testing.T) {
 			}
 		},
 	}
+	structParser := NewStructParser(config)
 
 	expected := RootStruct{
 		Name: "test",
@@ -54,6 +158,10 @@ func TestStructWithUnionType(t *testing.T) {
 		},
 		Ptr: &DataA{
 			A: 55,
+		},
+		RegularMap: map[string]int{
+			"a": 1,
+			"b": 2,
 		},
 	}
 
@@ -72,11 +180,15 @@ func TestStructWithUnionType(t *testing.T) {
 		"ptr": map[string]interface{}{
 			"a": 55,
 		},
+		"regular_map": map[string]int{
+			"a": 1,
+			"b": 2,
+		},
 	}
 
 	// Act:
 	actual := RootStruct{}
-	err := structParser.Parse(reflect.ValueOf(input), reflect.ValueOf(&actual))
+	err := structParser.Parse(reflect.ValueOf(input), reflect.ValueOf(&actual), EmptyContext)
 
 	// Assert:
 	assert.NoError(t, err)
