@@ -9,13 +9,17 @@ import (
 )
 
 type RootStruct struct {
-	Name           string            `marshal:"name"`
-	Type           string            `marshal:"type"`
-	Strc           DataB             `marshal:"struct"`
-	Ptr            *DataA            `marshal:"ptr"`
-	RegularMap     map[string]int    `marshal:"regular_map"`
-	MapWithStruct  map[string]DataA  `marshal:"map_with_struct"`
-	MapWithPointer map[string]*DataA `marshal:"map_with_pointer"`
+	Name             string                 `marshal:"name"`
+	Type             string                 `marshal:"type"`
+	Strc             DataB                  `marshal:"struct"`
+	Ptr              *DataA                 `marshal:"ptr"`
+	RegularMap       map[string]int         `marshal:"regular_map"`
+	MapWithStruct    map[string]DataA       `marshal:"map_with_struct"`
+	MapWithPointer   map[string]*DataA      `marshal:"map_with_pointer"`
+	MapWithInterface map[string]interface{} `marshal:"map_with_interface"`
+	RegularArray     []string               `marshal:"regular_array"`
+	ArrayWithStruct  []DataA                `marshal:"array_with_struct"`
+	ArrayWithPointer []*DataA               `marshal:"array_with_pointer"`
 }
 
 type DataA struct {
@@ -42,6 +46,107 @@ func TestStructWithString(t *testing.T) {
 	input := map[string]interface{}{
 		"name": "test",
 		"type": "A",
+	}
+
+	// Act:
+	actual := RootStruct{}
+	err := structParser.Parse(reflect.ValueOf(input), reflect.ValueOf(&actual), EmptyContext)
+
+	// Assert:
+	assert.NoError(t, err)
+	assert.Equal(t, expected, actual)
+
+}
+
+func TestRegularArray(t *testing.T) {
+	config := &Config{
+		TagName: "marshal",
+	}
+
+	structParser := NewStructParser(config)
+
+	expected := RootStruct{
+		RegularArray: []string{"a", "b"},
+	}
+
+	input := map[string]interface{}{
+		"regular_array": []interface{}{"a", "b"},
+	}
+
+	// Act:
+	actual := RootStruct{}
+	err := structParser.Parse(reflect.ValueOf(input), reflect.ValueOf(&actual), EmptyContext)
+
+	// Assert:
+	assert.NoError(t, err)
+	assert.Equal(t, expected, actual)
+
+}
+
+func TestArrayWithStruct(t *testing.T) {
+	config := &Config{
+		TagName: "marshal",
+	}
+
+	structParser := NewStructParser(config)
+	expected := RootStruct{
+		ArrayWithStruct: []DataA{
+			{
+				A: 1,
+			},
+			{
+				A: 2,
+			},
+		},
+	}
+
+	input := map[string]interface{}{
+		"array_with_struct": []interface{}{
+			map[string]interface{}{
+				"a": 1,
+			},
+			map[string]interface{}{
+				"a": 2,
+			},
+		},
+	}
+
+	// Act:
+	actual := RootStruct{}
+	err := structParser.Parse(reflect.ValueOf(input), reflect.ValueOf(&actual), EmptyContext)
+
+	// Assert:
+	assert.NoError(t, err)
+	assert.Equal(t, expected, actual)
+
+}
+
+func TestArrayWithPointer(t *testing.T) {
+	config := &Config{
+		TagName: "marshal",
+	}
+
+	structParser := NewStructParser(config)
+	expected := RootStruct{
+		ArrayWithPointer: []*DataA{
+			{
+				A: 1,
+			},
+			{
+				A: 2,
+			},
+		},
+	}
+
+	input := map[string]interface{}{
+		"array_with_pointer": []interface{}{
+			map[string]interface{}{
+				"a": 1,
+			},
+			map[string]interface{}{
+				"a": 2,
+			},
+		},
 	}
 
 	// Act:
@@ -117,6 +222,48 @@ func TestMapWithPointers(t *testing.T) {
 	}
 
 	config := &Config{TagName: "marshal"}
+	structParser := NewStructParser(config)
+
+	// Act:
+	actual := RootStruct{}
+	err := structParser.Parse(reflect.ValueOf(input), reflect.ValueOf(&actual), EmptyContext)
+
+	// Assert:
+	assert.NoError(t, err)
+	assert.Equal(t, expected, actual)
+}
+
+func TestMapWithInterface(t *testing.T) {
+	// Arrange:
+	input := map[string]interface{}{
+		"map_with_interface": map[string]interface{}{
+			"test1": map[string]interface{}{
+				"a": 1,
+			},
+			"test2": map[string]interface{}{
+				"a": 2,
+			},
+		},
+	}
+
+	expected := RootStruct{
+		MapWithInterface: map[string]interface{}{
+			"test1": &DataA{
+				A: 1,
+			},
+			"test2": &DataA{
+				A: 2,
+			},
+		},
+	}
+
+	config := &Config{
+		TagName: "marshal",
+		ValueResolver: func(ctx ParsingContext) (reflect.Value, error) {
+			return reflect.ValueOf(&DataA{}), nil
+		},
+	}
+
 	structParser := NewStructParser(config)
 
 	// Act:

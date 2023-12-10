@@ -36,6 +36,12 @@ func (parser *primitivesParser) Parse(from reflect.Value, into reflect.Value, ct
 		return fmt.Errorf("cannot set primitive value")
 	}
 
-	into.Set(from)
+	switch t := from.Interface().(type) {
+	case string:
+		into.SetString(t)
+	default:
+		into.Set(from)
+	}
+
 	return nil
 }

@@ -26,14 +26,15 @@ func (parser *ResolverParser) Parse(from reflect.Value, into reflect.Value, ctx 
 	case reflect.Map:
 		return NewMapParser(parser.config).Parse(from, into, ctx)
 
+	case reflect.Array, reflect.Slice:
+		return NewArrayParser(parser.config).Parse(from, into, ctx)
+
 	case reflect.Pointer:
 		return NewPointerParser(parser.config).Parse(from, into, ctx)
 
 	case reflect.Interface:
 		return NewInterfaceParser(parser.config).Parse(from, into, ctx)
-	// 	return parser.handleInterface(field, val, fieldKey, fatherData, fatherVal)
-
 	default:
-		return fmt.Errorf("unsupported")
+		return fmt.Errorf("unsupported kind: %s", into.Kind())
 	}
 }
