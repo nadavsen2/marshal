@@ -9,17 +9,18 @@ import (
 )
 
 type RootStruct struct {
-	Name             string                 `marshal:"name"`
-	Type             string                 `marshal:"type"`
-	Strc             DataB                  `marshal:"struct"`
-	Ptr              *DataA                 `marshal:"ptr"`
-	RegularMap       map[string]int         `marshal:"regular_map"`
-	MapWithStruct    map[string]DataA       `marshal:"map_with_struct"`
-	MapWithPointer   map[string]*DataA      `marshal:"map_with_pointer"`
-	MapWithInterface map[string]interface{} `marshal:"map_with_interface"`
-	RegularArray     []string               `marshal:"regular_array"`
-	ArrayWithStruct  []DataA                `marshal:"array_with_struct"`
-	ArrayWithPointer []*DataA               `marshal:"array_with_pointer"`
+	Name                 string                 `marshal:"name"`
+	Type                 string                 `marshal:"type"`
+	Strc                 DataB                  `marshal:"struct"`
+	Ptr                  *DataA                 `marshal:"ptr"`
+	RegularMap           map[string]int         `marshal:"regular_map"`
+	MapWithStruct        map[string]DataA       `marshal:"map_with_struct"`
+	MapWithPointer       map[string]*DataA      `marshal:"map_with_pointer"`
+	MapWithInterface     map[string]interface{} `marshal:"map_with_interface"`
+	RegularArray         []string               `marshal:"regular_array"`
+	ArrayWithStruct      []DataA                `marshal:"array_with_struct"`
+	ArrayWithPointer     []*DataA               `marshal:"array_with_pointer"`
+	UnionTypeToPrimitive any                    `marshal:"union_type_to_primitive"`
 }
 
 type DataA struct {
@@ -30,6 +31,33 @@ type DataB struct {
 	B          string `marshal:"b"`
 	Underlying DataA  `marshal:"underlying"`
 	Data       any    `marshal:"data"`
+}
+
+func TestUnionTypeToPrimitive(t *testing.T) {
+	config := &Config{
+		TagName: "marshal",
+		ValueResolver: func(ctx ParsingContext) (reflect.Value, error) {
+			return reflect.New(reflect.TypeOf("")).Elem(), nil
+		},
+	}
+	structParser := NewStructParser(config)
+
+	expected := RootStruct{
+		UnionTypeToPrimitive: "test",
+	}
+
+	input := map[string]interface{}{
+		"union_type_to_primitive": "test",
+	}
+
+	// Act:
+	actual := RootStruct{}
+	err := structParser.Parse(reflect.ValueOf(input), reflect.ValueOf(&actual), EmptyContext)
+
+	// Assert:
+	assert.NoError(t, err)
+	assert.Equal(t, expected, actual)
+
 }
 
 func TestStructWithString(t *testing.T) {
